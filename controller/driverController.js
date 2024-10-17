@@ -79,7 +79,6 @@ const createDriver = async (req, res) => {
 
     // Save the driver to the database
     await driver.save();
-    console.log("saving");
 
     return res.status(201).json({
       message: "Driver created successfully.",
@@ -138,7 +137,6 @@ const updateDriverById = async (req, res) => {
     .isNumeric()
     .withMessage("Driver ID must be a valid ID.")
     .run(req);
-
   await body("name")
     .optional()
     .isString()

@@ -13,8 +13,8 @@ clientRouter.get("/", getClients);
 
 clientRouter.post("/", createClient);
 
-clientRouter.get("/:client", getClientById);
+clientRouter.get("/:clientId", getClientById);
 
-clientRouter.patch("/:client", updateClient);
+clientRouter.put("/:clientId", updateClient);
 
 module.exports = clientRouter;

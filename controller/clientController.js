@@ -1,7 +1,46 @@
+const { body, param, validationResult } = require("express-validator");
 const Client = require("../models/Client"); // Adjust the path as needed
 
 // Create a new client
-exports.createClient = async (req, res) => {
+const createClient = async (req, res) => {
+  await body("clientName")
+    .isString()
+    .notEmpty()
+    .withMessage("Client name is required.")
+    .run(req);
+  await body("email")
+    .isString()
+    .notEmpty()
+    .withMessage("Email is required.")
+    .run(req);
+  await body("phoneNumber")
+    .isNumeric()
+    .notEmpty()
+    .isMobilePhone()
+    .withMessage("Phone number is required.")
+    .run(req);
+  await body("companyName")
+    .isString()
+    .notEmpty()
+    .withMessage("Company Name is required.")
+    .run(req);
+  await body("industry")
+    .isString()
+    .notEmpty()
+    .withMessage("Industry is required.")
+    .run(req);
+  await body("status")
+    .optional()
+    .isIn(["Active", "Inactive"])
+    .withMessage("Availability status must be either Active or Inactive.")
+    .run(req);
+  await body("note").isString().run(req);
+
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const {
     clientName,
     email,
@@ -12,21 +51,16 @@ exports.createClient = async (req, res) => {
     status,
   } = req.body;
 
-  // Basic validation
-  if (
-    !clientName ||
-    !email ||
-    !phoneNumber ||
-    !companyName ||
-    !industry ||
-    !status
-  ) {
-    return res
-      .status(400)
-      .json({ message: "All required fields must be provided" });
-  }
-
   try {
+    const exist = await Client.findOne({ phoneNumber: phoneNumber });
+    console.log(exist);
+    if (exist) {
+      return res.status(400).json({
+        success: false,
+        message: "Client Exists",
+      });
+    }
+
     const newClient = new Client({
       clientId: 0,
       clientName,
@@ -60,7 +94,7 @@ exports.createClient = async (req, res) => {
 };
 
 // Get all clients
-exports.getClients = async (req, res) => {
+const getClients = async (req, res) => {
   try {
     const clients = await Client.find();
     res.status(200).json(clients);
@@ -71,49 +105,103 @@ exports.getClients = async (req, res) => {
 };
 
 // Get a client by ID
-exports.getClientById = async (req, res) => {
+const getClientById = async (req, res) => {
+  await param("clientId")
+    .isNumeric()
+    .withMessage("Client ID must be a valid ID.")
+    .run(req);
+
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { clientId } = req.params;
+
   try {
-    const client = await Client.findById(req.params.id);
-
+    const client = await Client.findOne({ clientId });
     if (!client) {
-      return res.status(404).json({ message: "Client not found" });
+      return res.status(404).json({ error: "Client not found." });
     }
-
-    res.status(200).json(client);
+    return res.status(200).json(client);
   } catch (error) {
-    console.error("Error fetching client by ID:", error);
-    res.status(500).json({ message: "Server error", error });
+    console.error("Error fetching client:", error);
+    return res
+      .status(500)
+      .json({ error: "An internal server error occurred." });
   }
 };
 
 // Update a client by ID
-exports.updateClient = async (req, res) => {
-  const { clientName, email, phoneNumber, companyName, industry, note } =
-    req.body;
+const updateClient = async (req, res) => {
+  await param("clientId")
+    .isNumeric()
+    .withMessage("Client ID must be a valid ID.")
+    .run(req);
+  await body("clientName")
+    .optional()
+    .notEmpty()
+    .withMessage("Client name is required.")
+    .run(req);
+  await body("email")
+    .optional()
+    .notEmpty()
+    .withMessage("Email is required.")
+    .run(req);
+  await body("phoneNumber")
+    .optional()
+    .notEmpty()
+    .isMobilePhone()
+    .withMessage("Phone number is required.")
+    .run(req);
+  await body("companyName")
+    .optional()
+    .notEmpty()
+    .withMessage("Company Name is required.")
+    .run(req);
+  await body("industry")
+    .optional()
+    .notEmpty()
+    .withMessage("Industry is required.")
+    .run(req);
+  await body("status")
+    .optional()
+    .isIn(["Active", "Inactive"])
+    .withMessage("Availability status must be either Active or Inactive.")
+    .run(req);
+  await body("note").optional().run(req);
+
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { clientId } = req.params;
+  const updateData = req.body;
 
   try {
-    const updatedClient = await Client.findByIdAndUpdate(
-      req.params.id,
-      { clientName, email, phoneNumber, companyName, industry, note },
-      { new: true, runValidators: true },
-    );
-
-    if (!updatedClient) {
-      return res.status(404).json({ message: "Client not found" });
+    const client = await Client.findOneAndUpdate({ clientId }, updateData, {
+      new: true,
+      runValidators: true,
+    });
+    if (!client) {
+      return res.status(404).json({ error: "Client not found." });
     }
 
-    res.status(200).json({
-      message: "Client updated successfully",
-      client: updatedClient,
+    return res.status(200).json({
+      message: "Client updated successfully.",
+      client,
     });
   } catch (error) {
     console.error("Error updating client:", error);
-    res.status(500).json({ message: "Server error", error });
+    return res
+      .status(500)
+      .json({ error: "An internal server error occurred." });
   }
 };
 
 // Delete a client by ID
-exports.deleteClient = async (req, res) => {
+const deleteClient = async (req, res) => {
   try {
     const deletedClient = await Client.findByIdAndDelete(req.params.id);
 
@@ -126,4 +214,12 @@ exports.deleteClient = async (req, res) => {
     console.error("Error deleting client:", error);
     res.status(500).json({ message: "Server error", error });
   }
+};
+
+module.exports = {
+  createClient,
+  getClients,
+  getClientById,
+  updateClient,
+  deleteClient,
 };

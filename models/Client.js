@@ -5,9 +5,8 @@ const clientSchema = new mongoose.Schema(
   {
     clientId: {
       type: Number,
-      required: true,
       unique: true,
-      index: true,
+      required: true,
     },
     clientName: {
       type: String,
@@ -44,15 +43,13 @@ const clientSchema = new mongoose.Schema(
 );
 
 clientSchema.pre("save", async function (next) {
-  console.log("insideeee");
   if (this.isNew) {
     try {
-      const counter = await Counter.findOneAndUpdate(
+      const counter = await Counter.findByIdAndUpdate(
         { _id: "clientId" },
         { $inc: { sequence: 1 } },
-        { new: true, upsert: true },
+        { new: true, upsert: true }, // Create counter if it doesn't exist
       );
-
       this.clientId = counter.sequence;
       next();
     } catch (error) {
@@ -65,5 +62,4 @@ clientSchema.pre("save", async function (next) {
 });
 
 const Client = mongoose.model("Client", clientSchema);
-
 module.exports = Client;
